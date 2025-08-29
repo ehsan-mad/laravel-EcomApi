@@ -7,42 +7,102 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+# Laravel E-Commerce Backend API
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+A robust Laravel-based e-commerce backend API that provides comprehensive endpoints for managing products, categories, brands, user authentication, shopping cart, wishlists, reviews, and payment processing through SSLCommerz.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Product Management**: Complete CRUD operations for products with categories and brands
+- **User Authentication**: Secure API authentication using Laravel Sanctum and JWT
+- **Shopping Cart**: Add, update, remove items from cart
+- **Wishlist**: Save products for later purchase
+- **Product Reviews**: User reviews and ratings system
+- **Payment Processing**: Integration with SSLCommerz payment gateway
+- **Order Management**: Track and manage customer orders
+- **Featured Products**: Highlight products in sliders and by remarks
 
-## Learning Laravel
+## API Endpoints
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **/api/brandList**: Get all brands
+- **/api/categoryList**: Get all categories
+- **/api/listProductByCategory/{id}**: Get products by category
+- **/api/listProductByBrand/{id}**: Get products by brand
+- **/api/listProductByRemarks/{remark}**: Get products by remark
+- **/api/listProductSlider**: Get slider products
+- **/api/productDetails/{id}**: Get product details
+- **/api/listReviewByProduct/{id}**: Get product reviews
+- **/api/PaymentIPN**: Payment gateway callback
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Setup Instructions
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Prerequisites
 
-## Laravel Sponsors
+- PHP 8.2 or higher
+- Composer
+- MySQL/MariaDB
+- Node.js and npm (for frontend assets)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Installation Steps
 
-### Premium Partners
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd laravel-Ecom-Backend
+   ```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+2. Install PHP dependencies:
+   ```bash
+   composer install
+   ```
+
+3. Install JavaScript dependencies:
+   ```bash
+   npm install
+   ```
+
+4. Create environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+5. Generate application key:
+   ```bash
+   php artisan key:generate
+   ```
+
+6. Configure database in .env file:
+   ```
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=laravel_ecom_backend
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
+
+7. Run database migrations:
+   ```bash
+   php artisan migrate
+   ```
+
+8. Start the development server:
+   ```bash
+   php artisan serve
+   ```
+
+9. For frontend asset compilation:
+   ```bash
+   npm run dev
+   ```
+
+### All-in-one Development Command
+
+```bash
+composer dev
+```
+
+This runs the server, queue worker, and Vite development server concurrently.
 
 ## Contributing
 
