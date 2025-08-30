@@ -182,3 +182,22 @@ Route::get('/payment-config', function () {
     ];
 });
 
+Route::get('/payment-health', function () {
+    $row = \App\Models\SslcommerzAccount::first();
+    $issues = [];
+    if (!$row) { $issues[] = 'no_row'; }
+    else {
+        foreach (['store_id','store_password','currency','init_url','success_url','fail_url','cancel_url','ipn_url'] as $f) {
+            if (empty($row->$f)) { $issues[] = "missing_$f"; }
+        }
+        if ($row && str_contains($row->init_url, 'sandbox') && $row->store_id !== 'testbox') {
+            // acceptable if you have real sandbox creds though; just informational
+        }
+    }
+    return [
+        'ok' => count($issues)===0,
+        'issues' => $issues,
+        'sandbox' => $row ? (bool) str_contains($row->init_url,'sandbox') : null
+    ];
+});
+

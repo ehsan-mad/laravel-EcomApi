@@ -54,6 +54,10 @@ if php artisan list | grep -q 'cockroach:migrate'; then
 fi
 set -e
 
+# Seed database (idempotent; seeder skips if data exists)
+echo "[entrypoint] Seeding database (DatabaseSeeder)..."
+php artisan db:seed --force || echo "[entrypoint] db:seed failed (continuing)."
+
 # (Optional) config cache (skip route cache for now due to closure routes)
 php artisan config:clear || true
 php artisan route:clear || true
