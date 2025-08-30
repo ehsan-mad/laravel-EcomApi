@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: laravel-api
+    env: php
+    plan: free
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader && \
+      php artisan config:cache && \
+      php artisan route:cache
+    startCommand: php -d variables_order=EGPCS artisan serve --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_KEY
+        generateValue: true
