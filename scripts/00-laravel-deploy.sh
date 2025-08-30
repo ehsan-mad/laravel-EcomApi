@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-echo "Running composer"
-composer global require hirak/prestissimo
+echo "Running composer install..."
 composer install --no-dev --working-dir=/var/www/html
 
 echo "Generating application key..."
-php artisan key:generate --show
+php artisan key:generate --force
 
 echo "Caching config..."
 php artisan config:cache
@@ -15,3 +14,5 @@ php artisan route:cache
 
 echo "Running CockroachDB migrations..."
 php artisan cockroach:migrate
+
+echo "Laravel deployment completed successfully!"
