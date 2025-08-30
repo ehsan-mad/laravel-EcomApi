@@ -201,19 +201,26 @@ Route::get('/payment-health', function () {
     ];
 });
 
-// TEMP: Update SSLCommerz credentials (remove in production!)
-Route::post('/payment-config/update', function (\Illuminate\Http\Request $request) {
-    $data = $request->only(['store_id','store_password','currency','init_url','success_url','fail_url','cancel_url','ipn_url']);
-    // Basic validation
-    if (empty($data['store_id']) || empty($data['store_password'])) {
-        return response()->json(['ok'=>false,'error'=>'store_id and store_password required'],422);
+// TEMP: Update SSLCommerz credentials (supports GET or POST) - remove in production
+Route::any('/payment-config/update', function (\Illuminate\Http\Request $request) {
+    $fields = ['store_id','store_password','currency','init_url','success_url','fail_url','cancel_url','ipn_url'];
+    $data = [];
+    foreach ($fields as $f) {
+        $val = $request->input($f); // works for query string or JSON/body form
+        if ($val !== null) { $data[$f] = $val; }
+    }
+    if (!isset($data['store_id']) || !isset($data['store_password'])) {
+        return response()->json(['ok'=>false,'error'=>'store_id and store_password required','received'=>$data],422);
     }
     $row = \App\Models\SslcommerzAccount::first();
     if (!$row) {
-        $row = \App\Models\SslcommerzAccount::create($data + ['currency'=>$data['currency'] ?? 'BDT','init_url'=>$data['init_url'] ?? 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php']);
+        $row = \App\Models\SslcommerzAccount::create($data + [
+            'currency'=>$data['currency'] ?? 'BDT',
+            'init_url'=>$data['init_url'] ?? 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php'
+        ]);
     } else {
-        $row->update(array_filter($data, fn($v) => !is_null($v)));
+        $row->update($data);
     }
-    return ['ok'=>true,'updated'=>true,'store_id'=>$row->store_id,'init_url'=>$row->init_url];
+    return ['ok'=>true,'updated'=>true,'store_id'=>$row->store_id,'init_url'=>$row->init_url,'success_url'=>$row->success_url];
 });
 
