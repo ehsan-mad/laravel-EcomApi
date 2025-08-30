@@ -1,29 +1,47 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+########## Stage 1: Composer Dependencies ##########
+FROM composer:2.7 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-scripts --no-progress --no-interaction
 
+########## Stage 2: Runtime (PHP CLI + built-in server) ##########
+FROM php:8.2-cli
+
+# Install needed system packages & PHP extensions (pgsql for CockroachDB)
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends libpq-dev git unzip \
+	&& docker-php-ext-install pdo pdo_pgsql \
+	&& rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/www/html
+
+# Copy application code
 COPY . .
+# Copy vendor from build stage
+COPY --from=vendor /app/vendor ./vendor
 
-# Image config
-ENV SKIP_COMPOSER 1
-ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV RUN_SCRIPTS 1
-ENV REAL_IP_HEADER 1
+# Environment defaults (override in Render dashboard)
+ENV APP_ENV=production \
+	APP_DEBUG=false \
+	LOG_CHANNEL=stderr \
+	DB_CONNECTION=pgsql \
+	DB_SSLMODE=require \
+	PORT=8000
 
-# Laravel config
-ENV APP_ENV production
-ENV APP_DEBUG false
-ENV LOG_CHANNEL stderr
+# Ensure storage & cache dirs exist with correct permissions
+RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
+	&& chown -R www-data:www-data storage bootstrap/cache \
+	&& chmod -R 775 storage bootstrap/cache
 
-# Database config (will be overridden by render.yaml env vars)
-ENV DB_CONNECTION pgsql
-ENV DB_HOST laravelecomapi-15349.j77.cockroachlabs.cloud
-ENV DB_PORT 26257
-ENV DB_DATABASE laravelecomapi-15349.defaultdb
-ENV DB_USERNAME ehsan
-ENV DB_PASSWORD mCRW9kBfMfUTlGCXaCswOA
-ENV DB_SSLMODE require
+# Provide .env if missing so key:generate works; keep user overrides via env vars
+RUN set -eux; \
+	if [ ! -f .env ]; then cp .env.example .env || true; fi; \
+	grep -q '^APP_KEY=' .env || echo 'APP_KEY=' >> .env
 
-# Allow composer to run as root
-ENV COMPOSER_ALLOW_SUPERUSER 1
+# Copy entrypoint script
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-CMD ["/start.sh"]
+EXPOSE 8000
+
+CMD ["/entrypoint.sh"]
