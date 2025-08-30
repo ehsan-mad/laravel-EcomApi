@@ -28,6 +28,17 @@ else
   echo "[entrypoint] APP_KEY already present."
 fi
 
+# Ensure JWT_SECRET exists for token generation
+if ! grep -q '^JWT_SECRET=' .env; then
+  JWT=$(php -r "echo bin2hex(random_bytes(32));")
+  echo "JWT_SECRET=${JWT}" >> .env
+  echo "[entrypoint] Generated JWT_SECRET." 
+elif grep -q '^JWT_SECRET=$' .env; then
+  JWT=$(php -r "echo bin2hex(random_bytes(32));")
+  sed -i "s#^JWT_SECRET=.*#JWT_SECRET=${JWT}#" .env
+  echo "[entrypoint] Filled empty JWT_SECRET." 
+fi
+
 php -v
 php artisan --version || true
 
