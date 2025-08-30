@@ -81,6 +81,21 @@ class InvoiceController extends Controller
 
            DB::commit();
 
+           if ($paymentMethod === null) {
+               Log::warning('SSLCommerz initiation returned null', ['tran_id'=>$tran_id]);
+               return ResponseHelper::Out('fail', 'Payment gateway not configured', 500);
+           }
+
+           // Normalize status
+           $status = $paymentMethod['paymentMethod']['status'] ?? 'UNKNOWN';
+           if (strtoupper($status) !== 'SUCCESS') {
+               Log::warning('SSLCommerz payment initiation failed', [
+                   'tran_id'=>$tran_id,
+                   'status'=>$status,
+                   'reason'=>$paymentMethod['paymentMethod']['failedreason'] ?? null
+               ]);
+           }
+
            return ResponseHelper::Out('success',array(['paymentMethod'=>$paymentMethod,'payable'=>$payable,'vat'=>$vat,'total'=>$total]),200);
 
         }
