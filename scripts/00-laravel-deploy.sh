@@ -3,6 +3,9 @@
 echo "Running composer install..."
 composer install --no-dev --working-dir=/var/www/html
 
+echo "Setting up environment file..."
+cp /var/www/html/.env.example /var/www/html/.env
+
 echo "Generating application key..."
 php artisan key:generate --force
 
