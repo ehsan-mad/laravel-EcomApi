@@ -15,127 +15,122 @@ use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
-   
+    // Create invoice from current user's cart and initiate SSLCommerz payment
     function InvoiceCreate(Request $request)
     {
         DB::beginTransaction();
         try {
-
-            //
-            $user_id=$request->header('id');
-            $user_email=$request->header('email');
-
-            $tran_id=uniqid();
-            $delivery_status='Pending';
-            $payment_status='Pending';
-
-            $Profile=CustomerProfile::where('user_id','=',$user_id)->first();
+            $userId = $request->header('id');
+            $userEmail = $request->header('email');
+            $tranId = uniqid();
+            $Profile = CustomerProfile::where('user_id',$userId)->first();
             
             if (!$Profile) {
-                return ResponseHelper::Out('fail', 'Customer profile not found', 400);
+                return ResponseHelper::error('Customer profile not found', null, 400);
             }
             
-            $cus_details="Name:$Profile->cus_name,Address:$Profile->cus_address,City:$Profile->cus_city,Phone: $Profile->cus_phone";
-            $ship_details="Name:$Profile->ship_name,Address:$Profile->ship_address,City:$Profile->ship_city,Phone: $Profile->ship_phone";
+            $cus_details = "Name:$Profile->cus_name,Address:$Profile->cus_address,City:$Profile->cus_city,Phone:$Profile->cus_phone";
+            $ship_details = "Name:$Profile->ship_name,Address:$Profile->ship_address,City:$Profile->ship_city,Phone:$Profile->ship_phone";
 
             // Payable Calculation
-            $total=0;
-            $cartList=ProductCart::where('user_id','=',$user_id)->get();
+            $total = 0;
+            $cartList = ProductCart::where('user_id',$userId)->get();
             
             if ($cartList->isEmpty()) {
-                return ResponseHelper::Out('fail', 'Cart is empty', 400);
+                return ResponseHelper::error('Cart is empty', null, 400);
             }
             
-            foreach ($cartList as $cartItem) {
-                $total=$total+$cartItem->price;
-            }
+            foreach ($cartList as $item) { $total += $item->price; }
 
-            $vat=($total*3)/100;
-            $payable=$total+$vat;
+            $vat = round($total * 0.03,2);
+            $payable = $total + $vat;
 
-            $invoice= Invoice::create([
+            $invoice = Invoice::create([
                 'total'=>$total,
                 'vat'=>$vat,
                 'payable'=>$payable,
                 'cus_details'=>$cus_details,
                 'ship_details'=>$ship_details,
-                'tran_id'=>$tran_id,
-                'delivery_status'=>$delivery_status,
-                'payment_status'=>$payment_status,
-                'user_id'=>$user_id
+                'tran_id'=>$tranId,
+                'delivery_status'=>'Pending',
+                'payment_status'=>'Pending',
+                'user_id'=>$userId
             ]);
 
-            $invoiceID=$invoice->id;
-
-            foreach ($cartList as $EachProduct) {
+            foreach ($cartList as $c) {
                 InvoiceProduct::create([
-                    'invoice_id' => $invoiceID,
-                    'product_id' => $EachProduct['product_id'],
-                    'user_id'=>$user_id,
-                    'qty' =>  $EachProduct['qty'],
-                    'sale_price'=>  $EachProduct['price'],
+                    'invoice_id' => $invoice->id,
+                    'product_id' => $c->product_id,
+                    'user_id'=>$userId,
+                    'qty' =>  $c->qty,
+                    'sale_price'=>  $c->price,
                 ]);
             }
 
-           $paymentMethod=SSLCommerz::InitiatePayment($Profile,$payable,$tran_id,$user_email);
+           $paymentMethod = SSLCommerz::InitiatePayment($Profile,$payable,$tranId,$userEmail);
 
            DB::commit();
 
            if ($paymentMethod === null) {
-               Log::warning('SSLCommerz initiation returned null', ['tran_id'=>$tran_id]);
-               return ResponseHelper::Out('fail', 'Payment gateway not configured', 500);
+               Log::warning('SSLCommerz initiation returned null', ['tran_id'=>$tranId]);
+               return ResponseHelper::error('Payment gateway not configured', null, 500);
            }
 
            // Normalize status
-           $status = $paymentMethod['paymentMethod']['status'] ?? 'UNKNOWN';
+       $status = $paymentMethod['paymentMethod']['status'] ?? 'UNKNOWN'; // adapt to actual response structure
            if (strtoupper($status) !== 'SUCCESS') {
                Log::warning('SSLCommerz payment initiation failed', [
-                   'tran_id'=>$tran_id,
+           'tran_id'=>$tranId,
                    'status'=>$status,
                    'reason'=>$paymentMethod['paymentMethod']['failedreason'] ?? null
                ]);
            }
 
-           return ResponseHelper::Out('success',array(['paymentMethod'=>$paymentMethod,'payable'=>$payable,'vat'=>$vat,'total'=>$total]),200);
+           return ResponseHelper::success([
+                    'payment' => $paymentMethod,
+                    'totals' => [
+                        'total' => $total,
+                        'vat' => $vat,
+                        'payable' => $payable,
+                    ],
+                    'status' => $status
+                ], 'Invoice created');
 
         }
-        catch (Exception $e) {
+    catch (Exception $e) {
             DB::rollBack();
             // Log the actual error for debugging
             Log::error('Invoice creation failed: ' . $e->getMessage());
-            return ResponseHelper::Out('fail', $e->getMessage(), 500);
+            return ResponseHelper::error($e->getMessage(), null, 500);
         }
 
     }
 
 
     function InvoiceList(Request $request){
-        $user_id=$request->header('id');
-        return Invoice::where('user_id',$user_id)->get();
+        return Invoice::where('user_id',$request->header('id'))->get();
     }
 
     function InvoiceProductList(Request $request){
-        $user_id=$request->header('id');
-        $invoice_id=$request->invoice_id;
-        return InvoiceProduct::where(['user_id'=>$user_id,'invoice_id'=>$invoice_id])->with('product')->get();
+        return InvoiceProduct::where([
+            'user_id'=>$request->header('id'),
+            'invoice_id'=>$request->invoice_id
+        ])->with('product')->get();
     }
 
     function PaymentSuccess(Request $request){
-        $tran_id = $request->input('tran_id') ?? $request->query('tran_id');
-        SSLCommerz::InitiateSuccess($tran_id);
+        SSLCommerz::InitiateSuccess($request->input('tran_id') ?? $request->query('tran_id'));
         return redirect('/profile');
     }
 
 
     function PaymentCancel(Request $request){
-        $tran_id = $request->input('tran_id') ?? $request->query('tran_id');
-        SSLCommerz::InitiateCancel($tran_id);
+        SSLCommerz::InitiateCancel($request->input('tran_id') ?? $request->query('tran_id'));
         return redirect('/profile');
     }
 
     function PaymentFail(Request $request){
-        $tran_id = $request->input('tran_id') ?? $request->query('tran_id');
-        SSLCommerz::InitiateFail($tran_id);
+        SSLCommerz::InitiateFail($request->input('tran_id') ?? $request->query('tran_id'));
         return redirect('/profile');
     }
 

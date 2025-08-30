@@ -10,17 +10,17 @@ use Illuminate\Support\Facades\Log;
 
 class SSLCommerz
 {
-  
-   static function  InitiatePayment($Profile,$payable,$tran_id,$user_email)
-   {
-      try{
-          $ssl= SslcommerzAccount::first();
-          
-          if (!$ssl) {
-              return null; // Return null if no SSL config found
-          }
-          
-          $payload = [
+    /**
+     * Initiate a payment session with SSLCommerz.
+     * Returns decoded JSON response from gateway or null on failure.
+     */
+    static function  InitiatePayment($Profile,$payable,$tran_id,$user_email)
+    {
+        try{
+             $ssl= SslcommerzAccount::first();
+             if (!$ssl) { return null; }
+
+             $payload = [
               "store_id"=>$ssl->store_id,
               "store_passwd"=>$ssl->store_password, // Fixed: was store_passwd
               "total_amount"=>$payable,
@@ -55,42 +55,21 @@ class SSLCommerz
           ];
           Log::info('SSLCommerz initiate payload', ['url'=>$ssl->init_url, 'payload'=> $payload]);
           $response = Http::asForm()->post($ssl->init_url,$payload);
-          Log::info('SSLCommerz initiate response', ['status'=>$response->status(), 'body'=>$response->body()]);
-          
-          $responseData = $response->json();
-          
-          // Return the full response data which contains payment URLs
-          return $responseData;
+        Log::info('SSLCommerz initiate response', ['status'=>$response->status(), 'body'=>$response->body()]);
+        return $response->json();
       }
       catch (Exception $e){
-          return null; // Return null on error instead of $ssl
+        Log::error('SSLCommerz initiation exception', ['error'=>$e->getMessage()]);
+        return null; // Null indicates failure upstream
       }
 
     }
 
 
 
-    static function InitiateSuccess($tran_id):int{
-        Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>'Success']);
-        return 1;
-    }
-
-
-
-    static function InitiateFail($tran_id):int{
-       Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>'Fail']);
-       return 1;
-    }
-
-
-
-    static function InitiateCancel($tran_id):int{
-        Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>'Cancel']);
-        return 1;
-    }
-
-    static function InitiateIPN($tran_id,$status,$val_id):int{
-        Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>$status,'val_id'=>$val_id]);
-        return 1;
-    }
+    // Lightweight status update helpers
+    static function InitiateSuccess($tran_id):int { Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>'Success']); return 1; }
+    static function InitiateFail($tran_id):int    { Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>'Fail']); return 1; }
+    static function InitiateCancel($tran_id):int  { Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>'Cancel']); return 1; }
+    static function InitiateIPN($tran_id,$status,$val_id):int { Invoice::where(['tran_id'=>$tran_id,'val_id'=>0])->update(['payment_status'=>$status,'val_id'=>$val_id]); return 1; }
 }

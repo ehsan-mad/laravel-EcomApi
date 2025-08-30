@@ -8,8 +8,17 @@ use Illuminate\Support\Facades\Log;
 
 class JWTToken
 {
+    /**
+     * Cached resolved signing key (process lifetime)
+     */
     private static ?string $cachedKey = null; // in-process fallback
 
+    /**
+     * Resolve the HMAC signing key with graceful fallbacks:
+     * 1. JWT_SECRET env
+     * 2. APP_KEY (decoded if base64:)
+     * 3. Ephemeral random key (will invalidate tokens on restart)
+     */
     private static function resolveKey(): string
     {
         if (self::$cachedKey !== null) {
@@ -41,6 +50,9 @@ class JWTToken
         return $key;
     }
 
+    /**
+     * Generate a short-lived (1h) JWT token for given email & user id.
+     */
     public static function generateToken($UserEmail, $UserId): string
     {
         $key = self::resolveKey();
@@ -54,6 +66,9 @@ class JWTToken
         return JWT::encode($payload, $key, 'HS256');
     }
 
+    /**
+     * Decode a JWT token; returns decoded payload object or "unauthorized" string.
+     */
     public static function ReadToken($token): object | string
     {
         try {
