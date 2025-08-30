@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\SslcommerzAccount;
 use Exception;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SSLCommerz
 {
@@ -19,7 +20,7 @@ class SSLCommerz
               return null; // Return null if no SSL config found
           }
           
-          $response = Http::asForm()->post($ssl->init_url,[
+          $payload = [
               "store_id"=>$ssl->store_id,
               "store_passwd"=>$ssl->store_password, // Fixed: was store_passwd
               "total_amount"=>$payable,
@@ -51,7 +52,10 @@ class SSLCommerz
               "product_category"=>"My Ecommerce Category",
               "product_profile"=>"My Ecommerce Profile",
               "product_amount"=>$payable,
-          ]);
+          ];
+          Log::info('SSLCommerz initiate payload', ['url'=>$ssl->init_url, 'payload'=> $payload]);
+          $response = Http::asForm()->post($ssl->init_url,$payload);
+          Log::info('SSLCommerz initiate response', ['status'=>$response->status(), 'body'=>$response->body()]);
           
           $responseData = $response->json();
           

@@ -165,3 +165,20 @@ Route::get('/routes-debug', function () {
     return response()->json($routes->values());
 });
 
+// SSLCommerz config debug (mask password)
+Route::get('/payment-config', function () {
+    $row = \App\Models\SslcommerzAccount::first();
+    if(!$row){ return ['configured'=>false]; }
+    return [
+        'configured'=>true,
+        'store_id'=>$row->store_id,
+        'store_password'=> $row->store_password ? substr($row->store_password,0,2).'***' : null,
+        'currency'=>$row->currency,
+        'init_url'=>$row->init_url,
+        'success_url'=>$row->success_url,
+        'fail_url'=>$row->fail_url,
+        'cancel_url'=>$row->cancel_url,
+        'ipn_url'=>$row->ipn_url,
+    ];
+});
+
