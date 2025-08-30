@@ -5,6 +5,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\TokenAuthenticate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -72,11 +73,40 @@ Route::get('/productIds', function () {
             ]
         ]);
     } catch (\Exception $e) {
+    Log::error('productIds error', [ 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString() ]);
         return response()->json([
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => $e->getMessage(),
+            'type' => get_class($e)
         ], 500);
     }
+});
+
+// Minimal DB ping endpoint
+Route::get('/db-ping', function () {
+    try {
+        $one = DB::select('SELECT 1 as one');
+        return ['ok' => true, 'one' => $one[0]->one ?? null];
+    } catch (\Throwable $t) {
+        return response()->json(['ok' => false, 'error' => $t->getMessage(), 'type' => get_class($t)], 500);
+    }
+});
+
+// Raw single row fetch tests
+Route::get('/products-sample', function () {
+    try {
+        return [ 'rows' => DB::table('products')->select('id','name')->limit(1)->get() ];
+    } catch (\Throwable $t) { return response()->json(['error' => $t->getMessage(), 'type' => get_class($t)], 500); }
+});
+Route::get('/categories-sample', function () {
+    try {
+        return [ 'rows' => DB::table('categories')->select('id','category_name')->limit(1)->get() ];
+    } catch (\Throwable $t) { return response()->json(['error' => $t->getMessage(), 'type' => get_class($t)], 500); }
+});
+Route::get('/brands-sample', function () {
+    try {
+        return [ 'rows' => DB::table('brands')->select('id','brand_name')->limit(1)->get() ];
+    } catch (\Throwable $t) { return response()->json(['error' => $t->getMessage(), 'type' => get_class($t)], 500); }
 });
 
 // Simple health check endpoint
