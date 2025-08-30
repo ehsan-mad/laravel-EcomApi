@@ -212,6 +212,9 @@ Route::any('/payment-config/update', function (\Illuminate\Http\Request $request
     if (!isset($data['store_id']) || !isset($data['store_password'])) {
         return response()->json(['ok'=>false,'error'=>'store_id and store_password required','received'=>$data],422);
     }
+    if ($data['store_id'] === 'YOUR_SANDBOX_STORE_ID' || $data['store_password'] === 'YOUR_SANDBOX_STORE_PASSWORD') {
+        return response()->json(['ok'=>false,'error'=>'Replace placeholder values with real sandbox credentials.'],422);
+    }
     $row = \App\Models\SslcommerzAccount::first();
     if (!$row) {
         $row = \App\Models\SslcommerzAccount::create($data + [
