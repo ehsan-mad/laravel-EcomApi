@@ -43,11 +43,11 @@ if php artisan list | grep -q 'cockroach:migrate'; then
 fi
 set -e
 
-# (Optional) cache config/routes after migrations
+# (Optional) config cache (skip route cache for now due to closure routes)
 php artisan config:clear || true
 php artisan route:clear || true
 php artisan config:cache || true
-php artisan route:cache || true
+echo "[entrypoint] Skipping route:cache (closure routes present)."
 
 echo "[entrypoint] Initialization complete; attaching to server process (PID ${SERVER_PID})."
 tail -n 50 -f /tmp/server.log &

@@ -122,3 +122,16 @@ Route::middleware([TokenAuthenticate::class])->get('/debug-auth', function (Requ
     ]);
 });
 
+// Route list debug (DO NOT enable in production permanently)
+Route::get('/routes-debug', function () {
+    $routes = collect(Route::getRoutes())->map(function ($route) {
+        return [
+            'method' => implode('|', $route->methods()),
+            'uri' => $route->uri(),
+            'name' => $route->getName(),
+            'action' => $route->getActionName(),
+        ];
+    });
+    return response()->json($routes->values());
+});
+
