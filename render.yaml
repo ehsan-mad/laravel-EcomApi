@@ -1,13 +1,26 @@
 services:
   - type: web
-    name: laravel-api
-    env: php
+    name: laravel-ecom-api
+    env: docker
     plan: free
-    buildCommand: |
-      composer install --no-dev --optimize-autoloader && \
-      php artisan config:cache && \
-      php artisan route:cache
-    startCommand: php -d variables_order=EGPCS artisan serve --host 0.0.0.0 --port $PORT
     envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
       - key: APP_KEY
-        generateValue: true
+        value: base64:SGVsbG9Xb3JsZEhlbGxvV29ybGRIZWxsb1dvcmxkSGVsbG9Xb3JsZA==
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: laravelecomapi-15349.j77.cockroachlabs.cloud
+      - key: DB_PORT
+        value: 26257
+      - key: DB_DATABASE
+        value: laravelecomapi-15349.defaultdb
+      - key: DB_USERNAME
+        value: ehsan
+      - key: DB_PASSWORD
+        value: mCRW9kBfMfUTlGCXaCswOA
+      - key: DB_SSLMODE
+        value: require
