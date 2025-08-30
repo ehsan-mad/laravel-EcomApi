@@ -77,22 +77,22 @@ class ProductController extends Controller
         return ResponseHelper::success($data, 'Product wishlist retrieved successfully');
     }
 
-    public function CreateWishList(Request $request)
+    public function CreateWishList(Request $request, $product_id)
     {
         // Logic to create a product wishlist
         $user_id = $request->headers->get('id');
         $data    = ProductWish::updateOrCreate(
-            ['user_id' => $user_id, 'product_id' => $request->product_id],
-            ['user_id' => $user_id, 'product_id' => $request->product_id]
+            ['user_id' => $user_id, 'product_id' => $product_id],
+            ['user_id' => $user_id, 'product_id' => $product_id]
         );
         return ResponseHelper::success($data, 'Product wishlist created successfully');
     }
 
-    public function RemoveWishList(Request $request)
+    public function RemoveWishList(Request $request, $product_id)
     {
         // Logic to remove a product from the wishlist
         $user_id = $request->headers->get('id');
-        $data    = ProductWish::where(['user_id' => $user_id, 'product_id' => $request->product_id])->delete();
+        $data    = ProductWish::where(['user_id' => $user_id, 'product_id' => $product_id])->delete();
         return ResponseHelper::success($data, 'Product wishlist removed successfully');
     }
 

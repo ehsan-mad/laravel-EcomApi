@@ -52,7 +52,11 @@ class SSLCommerz
               "product_profile"=>"My Ecommerce Profile",
               "product_amount"=>$payable,
           ]);
-          return $response->json('desc');
+          
+          $responseData = $response->json();
+          
+          // Return the full response data which contains payment URLs
+          return $responseData;
       }
       catch (Exception $e){
           return null; // Return null on error instead of $ssl

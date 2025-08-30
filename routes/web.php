@@ -5,6 +5,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\TokenAuthenticate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 // Web routes for auth, wishlist/cart, invoices, and payment callbacks
 
@@ -36,4 +38,23 @@ Route::match(['get', 'post'], '/PaymentSuccess', [InvoiceController::class, 'Pay
 Route::match(['get', 'post'], '/PaymentFail', [InvoiceController::class, 'PaymentFail']);
 Route::match(['get', 'post'], '/PaymentCancel', [InvoiceController::class, 'PaymentCancel']);
 Route::match(['get', 'post'], '/PaymentIPN', [InvoiceController::class, 'PaymentIPN']);
+
+// Helper endpoint for CockroachDB product IDs
+Route::get('/productIds', function () {
+    return response()->json([
+        'products' => DB::table('products')->select('id', 'name')->get(),
+        'categories' => DB::table('categories')->select('id', 'category_name')->get(),
+        'brands' => DB::table('brands')->select('id', 'brand_name')->get()
+    ]);
+});
+
+// Debug endpoint to check authentication
+Route::middleware([TokenAuthenticate::class])->get('/debug-auth', function (Request $request) {
+    return response()->json([
+        'user_id' => $request->headers->get('id'),
+        'email' => $request->headers->get('email'),
+        'token' => $request->cookie('token'),
+        'message' => 'Authentication working'
+    ]);
+});
 

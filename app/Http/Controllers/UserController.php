@@ -55,7 +55,7 @@ class UserController extends Controller
 
     public function logout()
     {
-        return ResponseHelper::success(['message' => 'Logged out successfully'])->cookie('jwt', '', -1);
+        return ResponseHelper::success(['message' => 'Logged out successfully'])->cookie('token', '', -1);
     }
 
 }
