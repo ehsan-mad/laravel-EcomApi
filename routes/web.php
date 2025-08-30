@@ -8,6 +8,20 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
+// Root route
+Route::get('/', function () {
+    return response()->json([
+        'message' => 'Laravel E-commerce API is running successfully!',
+        'version' => '1.0.0',
+        'endpoints' => [
+            'health' => '/health',
+            'product_info' => '/productIds',
+            'authentication' => '/userLogin/{email}',
+            'verify_otp' => '/verifyOTP/{email}/{otp}'
+        ]
+    ]);
+});
+
 // Web routes for auth, wishlist/cart, invoices, and payment callbacks
 
 // Public: authentication
@@ -41,11 +55,61 @@ Route::match(['get', 'post'], '/PaymentIPN', [InvoiceController::class, 'Payment
 
 // Helper endpoint for CockroachDB product IDs
 Route::get('/productIds', function () {
+    try {
+        $products = DB::table('products')->select('id', 'name')->limit(10)->get();
+        $categories = DB::table('categories')->select('id', 'category_name')->limit(10)->get();
+        $brands = DB::table('brands')->select('id', 'brand_name')->limit(10)->get();
+        
+        return response()->json([
+            'status' => 'success',
+            'products' => $products,
+            'categories' => $categories,
+            'brands' => $brands,
+            'counts' => [
+                'total_products' => DB::table('products')->count(),
+                'total_categories' => DB::table('categories')->count(),
+                'total_brands' => DB::table('brands')->count()
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
+// Simple health check endpoint
+Route::get('/health', function () {
     return response()->json([
-        'products' => DB::table('products')->select('id', 'name')->get(),
-        'categories' => DB::table('categories')->select('id', 'category_name')->get(),
-        'brands' => DB::table('brands')->select('id', 'brand_name')->get()
+        'status' => 'healthy',
+        'timestamp' => now(),
+        'php_version' => PHP_VERSION,
+        'laravel_version' => app()->version(),
+        'memory_usage' => memory_get_usage(true) / 1024 / 1024 . ' MB'
     ]);
+});
+
+// Simple database test endpoint
+Route::get('/db-test', function () {
+    try {
+        // Increase memory limit
+        ini_set('memory_limit', '256M');
+        
+        $result = DB::select('SELECT COUNT(*) as count FROM products');
+        $product_count = $result[0]->count ?? 0;
+        
+        return response()->json([
+            'status' => 'database_connected',
+            'product_count' => $product_count,
+            'memory_usage' => memory_get_usage(true) / 1024 / 1024 . ' MB'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'database_error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 });
 
 // Debug endpoint to check authentication
