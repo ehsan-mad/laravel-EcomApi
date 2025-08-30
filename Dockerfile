@@ -26,7 +26,4 @@ ENV DB_SSLMODE require
 # Allow composer to run as root
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
-# Expose port 80
-EXPOSE 80
-
 CMD ["/start.sh"]
