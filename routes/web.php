@@ -201,3 +201,19 @@ Route::get('/payment-health', function () {
     ];
 });
 
+// TEMP: Update SSLCommerz credentials (remove in production!)
+Route::post('/payment-config/update', function (\Illuminate\Http\Request $request) {
+    $data = $request->only(['store_id','store_password','currency','init_url','success_url','fail_url','cancel_url','ipn_url']);
+    // Basic validation
+    if (empty($data['store_id']) || empty($data['store_password'])) {
+        return response()->json(['ok'=>false,'error'=>'store_id and store_password required'],422);
+    }
+    $row = \App\Models\SslcommerzAccount::first();
+    if (!$row) {
+        $row = \App\Models\SslcommerzAccount::create($data + ['currency'=>$data['currency'] ?? 'BDT','init_url'=>$data['init_url'] ?? 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php']);
+    } else {
+        $row->update(array_filter($data, fn($v) => !is_null($v)));
+    }
+    return ['ok'=>true,'updated'=>true,'store_id'=>$row->store_id,'init_url'=>$row->init_url];
+});
+
