@@ -14,11 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed demo user
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Seed demo user (avoid factory to prevent Faker dependency in production image)
+        if (!User::where('email', 'test@example.com')->exists()) {
+            User::create([
+                'email' => 'test@example.com',
+                'otp' => '000000',
+            ]);
+        }
 
         // Seed SSLCommerz sandbox credentials if table empty
         if (SslcommerzAccount::count() === 0) {
