@@ -8,15 +8,19 @@ use Illuminate\Support\Facades\Schema;
 
 class CockroachMigrate extends Command
 {
-    protected $signature = 'cockroach:migrate';
-    protected $description = 'Run migrations for CockroachDB without transactions';
+    /**
+     * Signature now supports an optional --bootstrap flag to insert sample data only when tables are empty.
+     */
+    protected $signature = 'cockroach:migrate {--bootstrap : Insert sample seed data if tables are empty}';
+    protected $description = 'Ensure CockroachDB tables exist (idempotent) and optionally bootstrap sample data';
 
     public function handle()
     {
-        $this->info('Creating tables for CockroachDB (idempotent)...');
+        $bootstrap = (bool)$this->option('bootstrap');
+        $this->info('Ensuring tables for CockroachDB (idempotent)...');
 
         try {
-            // Use IF NOT EXISTS for idempotency to silence duplicate errors on redeploys
+            // Use IF NOT EXISTS for idempotency to silence duplicate errors on redeploys.
             $statements = [
                 'users' => 'CREATE TABLE IF NOT EXISTS users (\n                    id SERIAL PRIMARY KEY,\n                    email VARCHAR(255) NOT NULL,\n                    otp VARCHAR(255) NOT NULL,\n                    created_at TIMESTAMP DEFAULT NOW(),\n                    updated_at TIMESTAMP DEFAULT NOW()\n                )',
                 'customer_profiles' => 'CREATE TABLE IF NOT EXISTS customer_profiles (\n                    id SERIAL PRIMARY KEY,\n                    cus_name VARCHAR(255),\n                    cus_state VARCHAR(255),\n                    cus_city VARCHAR(255),\n                    cus_postcode VARCHAR(255),\n                    cus_country VARCHAR(255),\n                    cus_phone VARCHAR(255),\n                    cus_address TEXT,\n                    ship_name VARCHAR(255),\n                    ship_state VARCHAR(255),\n                    ship_address TEXT,\n                    ship_city VARCHAR(255),\n                    ship_postcode VARCHAR(255),\n                    ship_country VARCHAR(255),\n                    ship_phone VARCHAR(255),\n                    user_id BIGINT REFERENCES users(id),\n                    created_at TIMESTAMP DEFAULT NOW(),\n                    updated_at TIMESTAMP DEFAULT NOW()\n                )',
@@ -36,10 +40,14 @@ class CockroachMigrate extends Command
 
             foreach ($statements as $name => $sql) {
                 DB::statement($sql);
-                $this->info("✓ Ensured {$name} table");
+                $this->info("✓ {$name}");
             }
 
-            $this->info('🎉 All tables ensured successfully for CockroachDB!');
+            $this->info('🎉 Tables ensured successfully.');
+
+            if ($bootstrap) {
+                $this->bootstrapSampleData();
+            }
 
         } catch (\Exception $e) {
             $this->error('Error: ' . $e->getMessage());
@@ -47,5 +55,71 @@ class CockroachMigrate extends Command
         }
 
         return 0;
+    }
+
+    /**
+     * Insert lightweight sample data only if core tables appear empty.
+     * This will NOT delete existing data. Uses explicit IDs for predictability
+     * but skips any insert that would conflict.
+     */
+    protected function bootstrapSampleData(): void
+    {
+        $this->info('📋 Bootstrapping sample data (only if empty)...');
+
+        // If users table already has rows, assume already bootstrapped.
+        $userCount = DB::table('users')->count();
+        if ($userCount > 0) {
+            $this->info("Skipped sample inserts (users table already has {$userCount} rows).");
+            return;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Users
+            DB::table('users')->insert([
+                ['id' => 1, 'email' => 'test@example.com', 'otp' => '0'],
+                ['id' => 2, 'email' => 'lal@g.com', 'otp' => '0'],
+            ]);
+
+            // Categories
+            DB::table('categories')->insert([
+                ['id' => 1, 'category_name' => 'Electronics', 'category_img' => 'electronics.jpg'],
+                ['id' => 2, 'category_name' => 'Clothing', 'category_img' => 'clothing.jpg'],
+                ['id' => 3, 'category_name' => 'Books', 'category_img' => 'books.jpg'],
+            ]);
+
+            // Brands
+            DB::table('brands')->insert([
+                ['id' => 1, 'brand_name' => 'Samsung', 'brand_img' => 'samsung.jpg'],
+                ['id' => 2, 'brand_name' => 'Apple', 'brand_img' => 'apple.jpg'],
+                ['id' => 3, 'brand_name' => 'Nike', 'brand_img' => 'nike.jpg'],
+            ]);
+
+            // Products
+            DB::table('products')->insert([
+                ['id' => 1, 'name' => 'iPhone 15', 'short_des' => 'Latest iPhone', 'price' => 999.99, 'discount' => 10, 'discount_price' => 899.99, 'image' => 'iphone15.jpg', 'star' => 5, 'stock' => 50, 'remark' => 'hot', 'category_id' => 1, 'brand_id' => 2],
+                ['id' => 2, 'name' => 'Samsung Galaxy S24', 'short_des' => 'Latest Samsung phone', 'price' => 899.99, 'discount' => 5, 'discount_price' => 854.99, 'image' => 'galaxy-s24.jpg', 'star' => 4, 'stock' => 30, 'remark' => 'new', 'category_id' => 1, 'brand_id' => 1],
+                ['id' => 3, 'name' => 'iPad Pro', 'short_des' => 'Latest iPad', 'price' => 1099.99, 'discount' => 8, 'discount_price' => 1011.99, 'image' => 'ipad-pro.jpg', 'star' => 5, 'stock' => 25, 'remark' => 'hot', 'category_id' => 1, 'brand_id' => 2],
+                ['id' => 4, 'name' => 'Nike Air Max', 'short_des' => 'Comfortable sneakers', 'price' => 150.00, 'discount' => 15, 'discount_price' => 127.50, 'image' => 'nike-air-max.jpg', 'star' => 4, 'stock' => 100, 'remark' => 'popular', 'category_id' => 2, 'brand_id' => 3],
+                ['id' => 5, 'name' => 'Programming Book', 'short_des' => 'Learn to code', 'price' => 29.99, 'discount' => 20, 'discount_price' => 23.99, 'image' => 'code-book.jpg', 'star' => 4, 'stock' => 200, 'remark' => 'education', 'category_id' => 3, 'brand_id' => 1],
+            ]);
+
+            // SSLCommerz account placeholder
+            DB::table('sslcommerz_accounts')->insert([
+                ['id' => 1, 'store_id' => 'placeholder_store', 'store_password' => 'placeholder_pass', 'currency' => 'BDT', 'success_url' => 'http://localhost/PaymentSuccess', 'fail_url' => 'http://localhost/PaymentFail', 'cancel_url' => 'http://localhost/PaymentCancel', 'ipn_url' => 'http://localhost/PaymentIPN', 'init_url' => 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php'],
+            ]);
+
+            DB::commit();
+
+            $this->info('🎉 Sample data inserted. Summary:');
+            $this->line('  Users: 2');
+            $this->line('  Categories: 3');
+            $this->line('  Brands: 3');
+            $this->line('  Products: 5');
+        } catch (\Throwable $t) {
+            DB::rollBack();
+            $this->error('Sample bootstrap failed: ' . $t->getMessage());
+        }
     }
 }
